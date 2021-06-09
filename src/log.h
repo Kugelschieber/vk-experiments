@@ -2,9 +2,9 @@
 #define VKE_LOG_H
 
 #define VKE_LOG_DEBUG 0
-#define VKE_LOG_INFO 0
-#define VKE_LOG_WARN 0
-#define VKE_LOG_ERROR 1
+#define VKE_LOG_INFO 1
+#define VKE_LOG_WARN 2
+#define VKE_LOG_ERROR 3
 
 // Sets the global log level (VKE_LOG_DEBUG by default).
 void vkeSetLogLevel(int level);
