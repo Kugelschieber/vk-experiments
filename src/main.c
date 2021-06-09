@@ -6,15 +6,16 @@
 #include "log.h"
 #include "window.h"
 
-struct VKEContext {
+typedef struct {
     VkInstance instance;
-};
+    VkPhysicalDevice physicalDevice;
+} VKEContext;
 
-struct VKEConfig {
+typedef struct {
     const char* title;
     int validationLayerCount;
     const char** validationLayers;
-};
+} VKEConfig;
 
 bool vkeCheckValidationLayerSupport(const char** validationLayers, int n) {
     if(n == 0) {
@@ -49,9 +50,42 @@ bool vkeCheckValidationLayerSupport(const char** validationLayers, int n) {
     return true;
 }
 
-int vkeInit(struct VKEContext* ctx, struct VKEConfig* config) {
+bool vkeIsSuitableDevice(VkPhysicalDevice device) {
+    // TODO
+    return true;
+}
+
+int vkeSelectPhysicalDevice(VKEContext* ctx) {
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(ctx->instance, &deviceCount, NULL);
+
+    if(deviceCount == 0) {
+        vkeLogError("no physical device available");
+        return -1;
+    }
+
+    VkPhysicalDevice devices[deviceCount];
+    vkEnumeratePhysicalDevices(ctx->instance, &deviceCount, devices);
+    VkPhysicalDevice device = VK_NULL_HANDLE;
+
+    for(int i = 0; i < deviceCount; i++) {
+        if(vkeIsSuitableDevice(devices[i])) {
+            device = devices[i];
+            break;
+        }
+    }
+
+    if(device == VK_NULL_HANDLE) {
+        vkeLogError("no suitable physical device found");
+        return -2;
+    }
+
+    return 0;
+}
+
+int vkeInit(VKEContext* ctx, VKEConfig* config) {
     if(!vkeCheckValidationLayerSupport(config->validationLayers, config->validationLayerCount)) {
-        vkeLogError("validation layer not supported\n");
+        vkeLogError("validation layer not supported");
         return -1;
     }
 
@@ -76,18 +110,22 @@ int vkeInit(struct VKEContext* ctx, struct VKEConfig* config) {
 
     if(config->validationLayerCount > 0) {
         createInfo.enabledLayerCount = config->validationLayerCount;
-        createInfo.ppEnabledExtensionNames = config->validationLayers;
+        createInfo.ppEnabledLayerNames = config->validationLayers;
     }
     
     if(vkCreateInstance(&createInfo, NULL, &ctx->instance) != VK_SUCCESS) {
-        vkeLogError("error creating vulkan instance\n");
+        vkeLogError("error creating vulkan instance");
         return -2;
+    }
+
+    if(vkeSelectPhysicalDevice(ctx) != 0) {
+        return -3;
     }
 
     return 0;
 }
 
-void vkeDestroy(struct VKEContext* ctx) {
+void vkeDestroy(VKEContext* ctx) {
     vkDestroyInstance(ctx->instance, NULL);
 }
 
@@ -107,11 +145,11 @@ int main(int argc, const char *argv[]) {
         return -1;
     }
 
-    struct VKEContext ctx;
+    VKEContext ctx;
     const char* validationLayers[] = {
         "VK_LAYER_KHRONOS_validation"
     };
-    struct VKEConfig config = {
+    VKEConfig config = {
         .title = title,
         .validationLayerCount = 1,
         .validationLayers = validationLayers
