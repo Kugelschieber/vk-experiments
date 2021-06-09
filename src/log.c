@@ -19,8 +19,20 @@ void vkeSetLogLevel(int level) {
 }
 
 void vkeLogDebug(const char* message) {
-    if(logLevel < VKE_LOG_ERROR) {
+    if(logLevel < VKE_LOG_INFO) {
         printf("%s [DEBUG] %s\n", timeNow(), message);
+    }
+}
+
+void vkeLogInfo(const char* message) {
+    if(logLevel < VKE_LOG_WARN) {
+        printf("%s [INFO] %s\n", timeNow(), message);
+    }
+}
+
+void vkeLogWarn(const char* message) {
+    if(logLevel < VKE_LOG_ERROR) {
+        printf("%s [WARN] %s\n", timeNow(), message);
     }
 }
 

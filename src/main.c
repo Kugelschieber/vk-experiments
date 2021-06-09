@@ -74,11 +74,10 @@ int vkeInit(struct VKEContext* ctx, struct VKEConfig* config) {
         .pApplicationInfo = &appInfo
     };
 
-    // TODO
-    /*if(config->validationLayerCount > 0) {
+    if(config->validationLayerCount > 0) {
         createInfo.enabledLayerCount = config->validationLayerCount;
         createInfo.ppEnabledExtensionNames = config->validationLayers;
-    }*/
+    }
     
     if(vkCreateInstance(&createInfo, NULL, &ctx->instance) != VK_SUCCESS) {
         vkeLogError("error creating vulkan instance\n");
