@@ -121,7 +121,7 @@ int vkeCreateLogicalDeviceAndQueues(VKEContext* ctx, VKEConfig* config, VKEQueue
     };
     float queuePriority = 1.0f;
     queueCreateInfo.pQueuePriorities = &queuePriority;
-    //VkPhysicalDeviceFeatures deviceFeatures;
+    //VkPhysicalDeviceFeatures deviceFeatures; TODO
     VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pQueueCreateInfos = &queueCreateInfo,
@@ -146,21 +146,7 @@ int vkeCreateLogicalDeviceAndQueues(VKEContext* ctx, VKEConfig* config, VKEQueue
     return 0;
 }
 
-int vkeCreateSurface(VKEContext* ctx) {
-    VkDisplaySurfaceCreateInfoKHR surfaceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR
-        // TODO
-    };
-
-    if(vkCreateDisplayPlaneSurfaceKHR(ctx->instance, &surfaceCreateInfo, NULL, &ctx->surface) != VK_SUCCESS) {
-        vkeLogError("error creating surface");
-        return -1;
-    }
-
-    return 0;
-}
-
-int vkeInit(VKEContext* ctx, VKEConfig* config) {
+int vkeInit(VKEContext* ctx, VKEConfig* config, GLFWwindow* window) {
     if(!vkeCheckValidationLayerSupport(config->validationLayers, config->validationLayerCount)) {
         vkeLogError("validation layer not supported");
         return -1;
@@ -209,10 +195,9 @@ int vkeInit(VKEContext* ctx, VKEConfig* config) {
         return -5;
     }
 
-    // TODO
-    /*if(vkeCreateSurface(ctx) != 0) {
+    if(vkeCreateWindowSurface(ctx->instance, window, &ctx->surface) != 0) {
         return -6;
-    }*/
+    }
 
     return 0;
 }
@@ -249,7 +234,7 @@ int main(int argc, const char *argv[]) {
         .validationLayers = validationLayers
     };
 
-    if(vkeInit(&ctx, &config) != 0) {
+    if(vkeInit(&ctx, &config, window) != 0) {
         return -1;
     }
 
