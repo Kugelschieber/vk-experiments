@@ -9,6 +9,9 @@
 typedef struct {
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
+    VkDevice device;
+    VkQueue graphicsQueue;
+    VkSurfaceKHR surface;
 } VKEContext;
 
 typedef struct {
@@ -16,6 +19,10 @@ typedef struct {
     int validationLayerCount;
     const char** validationLayers;
 } VKEConfig;
+
+typedef struct {
+    uint32_t graphicsQueueFamily;
+} VKEQueueFamilyIndices;
 
 bool vkeCheckValidationLayerSupport(const char** validationLayers, int n) {
     if(n == 0) {
@@ -80,6 +87,76 @@ int vkeSelectPhysicalDevice(VKEContext* ctx) {
         return -2;
     }
 
+    ctx->physicalDevice = device;
+    return 0;
+}
+
+int vkeFindQueueFamilies(VKEContext* ctx, VKEQueueFamilyIndices* indices) {
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(ctx->physicalDevice, &queueFamilyCount, NULL);
+    VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+    vkGetPhysicalDeviceQueueFamilyProperties(ctx->physicalDevice, &queueFamilyCount, queueFamilies);
+    bool foundGraphicsQueue = false;
+
+    for(int i = 0; i < queueFamilyCount; i++) {
+        if(queueFamilies[i].queueFlags&VK_QUEUE_GRAPHICS_BIT) {
+            indices->graphicsQueueFamily = i;
+            foundGraphicsQueue = true;
+        }
+    }
+
+    if(!foundGraphicsQueue) {
+        vkeLogError("graphics queue family index not found");
+        return -1;
+    }
+
+    return 0;
+}
+
+int vkeCreateLogicalDeviceAndQueues(VKEContext* ctx, VKEConfig* config, VKEQueueFamilyIndices* queueFamilies) {
+    VkDeviceQueueCreateInfo queueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = queueFamilies->graphicsQueueFamily,
+        .queueCount = 1
+    };
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+    //VkPhysicalDeviceFeatures deviceFeatures;
+    VkDeviceCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pQueueCreateInfos = &queueCreateInfo,
+        .queueCreateInfoCount = 1,
+        .pEnabledFeatures = VK_NULL_HANDLE,
+        .enabledExtensionCount = 0
+    };
+
+    if(config->validationLayerCount > 0) {
+        createInfo.enabledLayerCount = config->validationLayerCount;
+        createInfo.ppEnabledLayerNames = config->validationLayers;
+    } else {
+        createInfo.enabledLayerCount = 0;
+    }
+
+    if(vkCreateDevice(ctx->physicalDevice, &createInfo, NULL, &ctx->device) != VK_SUCCESS) {
+        vkeLogError("error creating logical device");
+        return -1;
+    }
+
+    vkGetDeviceQueue(ctx->device, queueFamilies->graphicsQueueFamily, 0, &ctx->graphicsQueue);
+    return 0;
+}
+
+int vkeCreateSurface(VKEContext* ctx) {
+    VkDisplaySurfaceCreateInfoKHR surfaceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR
+        // TODO
+    };
+
+    if(vkCreateDisplayPlaneSurfaceKHR(ctx->instance, &surfaceCreateInfo, NULL, &ctx->surface) != VK_SUCCESS) {
+        vkeLogError("error creating surface");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -122,10 +199,26 @@ int vkeInit(VKEContext* ctx, VKEConfig* config) {
         return -3;
     }
 
+    VKEQueueFamilyIndices queueFamilies;
+
+    if(vkeFindQueueFamilies(ctx, &queueFamilies) != 0) {
+        return -4;
+    }
+
+    if(vkeCreateLogicalDeviceAndQueues(ctx, config, &queueFamilies) != 0) {
+        return -5;
+    }
+
+    // TODO
+    /*if(vkeCreateSurface(ctx) != 0) {
+        return -6;
+    }*/
+
     return 0;
 }
 
 void vkeDestroy(VKEContext* ctx) {
+    vkDestroyDevice(ctx->device, NULL);
     vkDestroyInstance(ctx->instance, NULL);
 }
 
