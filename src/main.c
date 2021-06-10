@@ -218,6 +218,7 @@ int vkeInit(VKEContext* ctx, VKEConfig* config) {
 }
 
 void vkeDestroy(VKEContext* ctx) {
+    vkDestroySurfaceKHR(ctx->instance, ctx->surface, NULL);
     vkDestroyDevice(ctx->device, NULL);
     vkDestroyInstance(ctx->instance, NULL);
 }
