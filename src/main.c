@@ -16,6 +16,9 @@ typedef struct {
     VkQueue graphicsQueue;
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
+    VkImage* swapChainImages;
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
 } VKEContext;
 
 typedef struct {
@@ -211,6 +214,8 @@ int vkeCreateSwapChain(VKEContext* ctx, VKEQueueFamilyIndices* queueFamilies, GL
         }
     }
 
+    ctx->swapChainImageFormat = format.format; // save for later use
+
     // select present mode
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
@@ -222,17 +227,15 @@ int vkeCreateSwapChain(VKEContext* ctx, VKEQueueFamilyIndices* queueFamilies, GL
     }
 
     // choose extent
-    VkExtent2D extent;
-
     if(capabilities.currentExtent.width != UINT32_MAX) {
-        extent = capabilities.currentExtent;
+        ctx->swapChainExtent = capabilities.currentExtent;
     } else {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         VkExtent2D actualExtent = {width, height};
         actualExtent.width = max(capabilities.minImageExtent.width, min(capabilities.maxImageExtent.width, actualExtent.width));
         actualExtent.height = max(capabilities.minImageExtent.height, min(capabilities.maxImageExtent.height, actualExtent.height));
-        extent = actualExtent;
+        ctx->swapChainExtent = actualExtent;
     }
 
     // select the image count
@@ -249,7 +252,7 @@ int vkeCreateSwapChain(VKEContext* ctx, VKEQueueFamilyIndices* queueFamilies, GL
         .minImageCount = imageCount,
         .imageFormat = format.format,
         .imageColorSpace = format.colorSpace,
-        .imageExtent = extent,
+        .imageExtent = ctx->swapChainExtent,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
@@ -274,6 +277,10 @@ int vkeCreateSwapChain(VKEContext* ctx, VKEQueueFamilyIndices* queueFamilies, GL
         return -3;
     }
 
+    // receive swap chain images
+    vkGetSwapchainImagesKHR(ctx->device, ctx->swapChain, &imageCount, NULL);
+    ctx->swapChainImages = malloc(sizeof(VkImage)*imageCount);
+    vkGetSwapchainImagesKHR(ctx->device, ctx->swapChain, &imageCount, ctx->swapChainImages);
     return 0;
 }
 
@@ -338,6 +345,7 @@ int vkeInit(VKEContext* ctx, VKEConfig* config, GLFWwindow* window) {
 }
 
 void vkeDestroy(VKEContext* ctx) {
+    free(ctx->swapChainImages);
     vkDestroySwapchainKHR(ctx->device, ctx->swapChain, NULL);
     vkDestroySurfaceKHR(ctx->instance, ctx->surface, NULL);
     vkDestroyDevice(ctx->device, NULL);
